@@ -2,7 +2,8 @@ const {
   makeWASocket, 
   useMultiFileAuthState, 
   DisconnectReason, 
-  fetchLatestBaileysVersion 
+  fetchLatestBaileysVersion,
+  makeInMemoryStore
 } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const path = require('path');
@@ -15,6 +16,7 @@ class WhatsAppClient {
     this.status = 'DISCONNECTED'; // DISCONNECTED, CONNECTING, CONNECTED
     this.userInfo = null;
     this.io = null;
+    this.store = makeInMemoryStore({});
   }
 
   setSocketIO(io) {
@@ -47,6 +49,7 @@ class WhatsAppClient {
         browser: ['WhatsApp Scheduler Dashboard', 'Chrome', '1.0.0']
       });
 
+      this.store.bind(this.sock.ev);
       this.sock.ev.on('creds.update', saveCreds);
 
       this.sock.ev.on('connection.update', async (update) => {
@@ -124,15 +127,35 @@ class WhatsAppClient {
 
   async syncWhatsAppContacts() {
     try {
-      if (!this.sock) return;
       const { dbQuery } = require('../db/database');
       const { v4: uuidv4 } = require('uuid');
-      
-      const storeContacts = Object.values(this.sock.store?.contacts || {});
-      for (const c of storeContacts) {
-        if (!c.id || !c.id.endsWith('@s.whatsapp.net')) continue;
-        const phone = c.id.split('@')[0];
-        const name = c.name || c.notify || c.verifiedName || phone;
+
+      const extracted = new Map();
+
+      // 1. Extract from in-memory contacts store
+      if (this.store && this.store.contacts) {
+        for (const c of Object.values(this.store.contacts)) {
+          if (!c.id || !c.id.endsWith('@s.whatsapp.net') || c.id.includes(':')) continue;
+          const phone = c.id.split('@')[0];
+          const name = c.name || c.notify || c.verifiedName || phone;
+          extracted.set(phone, name);
+        }
+      }
+
+      // 2. Extract from in-memory chats store
+      if (this.store && this.store.chats) {
+        for (const chat of this.store.chats.all()) {
+          if (!chat.id || !chat.id.endsWith('@s.whatsapp.net') || chat.id.includes(':')) continue;
+          const phone = chat.id.split('@')[0];
+          const name = chat.name || chat.notify || phone;
+          if (!extracted.has(phone)) {
+            extracted.set(phone, name);
+          }
+        }
+      }
+
+      // 3. Insert all discovered contacts into SQLite DB
+      for (const [phone, name] of extracted.entries()) {
         const existing = await dbQuery.get(`SELECT id FROM contacts WHERE phone = ?`, [phone]);
         if (!existing) {
           await dbQuery.run(
