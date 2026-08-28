@@ -132,6 +132,10 @@ class WhatsAppClient {
 
   formatJid(recipient) {
     let cleaned = recipient.replace(/\D/g, '');
+    // If local Pakistani number starting with 03..., convert to 923...
+    if (cleaned.startsWith('03') && cleaned.length === 11) {
+      cleaned = '92' + cleaned.substring(1);
+    }
     if (!cleaned.endsWith('@s.whatsapp.net')) {
       cleaned = `${cleaned}@s.whatsapp.net`;
     }
