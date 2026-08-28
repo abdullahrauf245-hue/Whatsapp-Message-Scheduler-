@@ -141,6 +141,7 @@ async function refreshData() {
     renderTemplatesTable();
     renderLogsTable();
     populateTemplateDropdown();
+    populateContactDropdown();
 
   } catch (err) {
     console.error('Error refreshing dashboard data:', err);
@@ -260,13 +261,19 @@ function renderLogsTable() {
 
 function populateTemplateDropdown() {
   const select = document.getElementById('sched-template-select');
-  select.innerHTML = `<option value="">-- Choose Template --</option>` + 
+  select.innerHTML = '<option value="">-- Choose Template --</option>' + 
     templatesData.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+}
+
+function populateContactDropdown() {
+  const select = document.getElementById('sched-contact-select');
+  if (!select) return;
+  select.innerHTML = '<option value="">-- Select from Saved / Synced Contacts --</option>' + 
+    contactsData.map(c => `<option value="${c.phone}">${c.name} (${c.phone})</option>`).join('');
 
   select.onchange = (e) => {
-    const tmpl = templatesData.find(t => t.id === e.target.value);
-    if (tmpl) {
-      document.getElementById('sched-message').value = tmpl.content;
+    if (e.target.value) {
+      document.getElementById('sched-recipient').value = e.target.value;
     }
   };
 }
