@@ -45,10 +45,53 @@ class WhatsAppClient {
         version,
         auth: state,
         printQRInTerminal: true,
+        syncFullHistory: true,
         browser: ['WhatsApp Scheduler Dashboard', 'Chrome', '1.0.0']
       });
 
       this.sock.ev.on('creds.update', saveCreds);
+
+      // Listen to full messaging history / chat history sync from WhatsApp
+      this.sock.ev.on('messaging-history.set', async (data) => {
+        const { dbQuery } = require('../db/database');
+        const { v4: uuidv4 } = require('uuid');
+
+        const contacts = data.contacts || [];
+        const chats = data.chats || [];
+        const messages = data.messages || [];
+
+        for (const c of contacts) {
+          if (!c.id || !c.id.endsWith('@s.whatsapp.net') || c.id.includes(':')) continue;
+          const phone = c.id.split('@')[0];
+          const name = c.name || c.notify || c.verifiedName || phone;
+          this.contactsCache.set(phone, name);
+        }
+
+        for (const chat of chats) {
+          if (!chat.id || !chat.id.endsWith('@s.whatsapp.net') || chat.id.includes(':')) continue;
+          const phone = chat.id.split('@')[0];
+          const name = chat.name || chat.notify || phone;
+          if (!this.contactsCache.has(phone)) {
+            this.contactsCache.set(phone, name);
+          }
+        }
+
+        for (const msg of messages) {
+          if (!msg.key || !msg.key.remoteJid) continue;
+          const jid = msg.key.remoteJid;
+          if (jid.endsWith('@s.whatsapp.net') && !jid.includes(':')) {
+            const phone = jid.split('@')[0];
+            const name = msg.pushName || msg.verifiedBizName || phone;
+            if (!this.contactsCache.has(phone)) {
+              this.contactsCache.set(phone, name);
+            }
+          }
+        }
+
+        // Write directly to SQLite DB as soon as history streams in
+        await this.syncWhatsAppContacts();
+        this.broadcast('contacts_updated', {});
+      });
 
       // Listen for message events to catch active contacts/chatters
       this.sock.ev.on('messages.upsert', async (m) => {
