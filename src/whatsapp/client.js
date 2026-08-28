@@ -74,15 +74,7 @@ class WhatsAppClient {
         }
       });
 
-      this.sock.ev.on('contacts.set', async (item) => {
-        const contacts = item.contacts || [];
-        for (const c of contacts) {
-          if (!c.id || !c.id.endsWith('@s.whatsapp.net') || c.id.includes(':')) continue;
-          const phone = c.id.split('@')[0];
-          const name = c.name || c.notify || c.verifiedName || phone;
-          this.contactsCache.set(phone, name);
-        }
-      });
+      this.sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
@@ -130,24 +122,6 @@ class WhatsAppClient {
         }
       });
 
-      // Listen for contact sync events from Baileys
-      this.sock.ev.on('contacts.upsert', async (contacts) => {
-        const { dbQuery } = require('../db/database');
-        const { v4: uuidv4 } = require('uuid');
-        for (const c of contacts) {
-          if (!c.id || !c.id.endsWith('@s.whatsapp.net')) continue;
-          const phone = c.id.split('@')[0];
-          const name = c.name || c.notify || c.verifiedName || phone;
-          const existing = await dbQuery.get(`SELECT id FROM contacts WHERE phone = ?`, [phone]);
-          if (!existing) {
-            await dbQuery.run(
-              `INSERT INTO contacts (id, name, phone, tag, created_at) VALUES (?, ?, ?, ?, ?)`,
-              [uuidv4(), name, phone, 'WhatsApp Sync', new Date().toISOString()]
-            );
-          }
-        }
-      });
-
     } catch (error) {
       console.error('❌ WhatsApp Connection Error:', error);
       this.status = 'DISCONNECTED';
@@ -160,32 +134,8 @@ class WhatsAppClient {
       const { dbQuery } = require('../db/database');
       const { v4: uuidv4 } = require('uuid');
 
-      const extracted = new Map();
-
-      // 1. Extract from in-memory contacts store
-      if (this.store && this.store.contacts) {
-        for (const c of Object.values(this.store.contacts)) {
-          if (!c.id || !c.id.endsWith('@s.whatsapp.net') || c.id.includes(':')) continue;
-          const phone = c.id.split('@')[0];
-          const name = c.name || c.notify || c.verifiedName || phone;
-          extracted.set(phone, name);
-        }
-      }
-
-      // 2. Extract from in-memory chats store
-      if (this.store && this.store.chats) {
-        for (const chat of this.store.chats.all()) {
-          if (!chat.id || !chat.id.endsWith('@s.whatsapp.net') || chat.id.includes(':')) continue;
-          const phone = chat.id.split('@')[0];
-          const name = chat.name || chat.notify || phone;
-          if (!extracted.has(phone)) {
-            extracted.set(phone, name);
-          }
-        }
-      }
-
-      // 3. Insert all discovered contacts into SQLite DB
-      for (const [phone, name] of extracted.entries()) {
+      // 1. Insert cached contacts gathered from messaging & sync events
+      for (const [phone, name] of this.contactsCache.entries()) {
         const existing = await dbQuery.get(`SELECT id FROM contacts WHERE phone = ?`, [phone]);
         if (!existing) {
           await dbQuery.run(
