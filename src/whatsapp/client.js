@@ -2,8 +2,7 @@ const {
   makeWASocket, 
   useMultiFileAuthState, 
   DisconnectReason, 
-  fetchLatestBaileysVersion,
-  makeInMemoryStore
+  fetchLatestBaileysVersion
 } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const path = require('path');
@@ -16,7 +15,7 @@ class WhatsAppClient {
     this.status = 'DISCONNECTED'; // DISCONNECTED, CONNECTING, CONNECTED
     this.userInfo = null;
     this.io = null;
-    this.store = makeInMemoryStore({});
+    this.contactsCache = new Map();
   }
 
   setSocketIO(io) {
@@ -49,10 +48,41 @@ class WhatsAppClient {
         browser: ['WhatsApp Scheduler Dashboard', 'Chrome', '1.0.0']
       });
 
-      this.store.bind(this.sock.ev);
       this.sock.ev.on('creds.update', saveCreds);
 
-      this.sock.ev.on('connection.update', async (update) => {
+      // Listen for message events to catch active contacts/chatters
+      this.sock.ev.on('messages.upsert', async (m) => {
+        if (!m.messages) return;
+        for (const msg of m.messages) {
+          if (!msg.key || !msg.key.remoteJid) continue;
+          const jid = msg.key.remoteJid;
+          if (jid.endsWith('@s.whatsapp.net') && !jid.includes(':')) {
+            const phone = jid.split('@')[0];
+            const name = msg.pushName || msg.verifiedBizName || phone;
+            this.contactsCache.set(phone, name);
+          }
+        }
+      });
+
+      // Listen for contact sync events from Baileys
+      this.sock.ev.on('contacts.upsert', async (contacts) => {
+        for (const c of contacts) {
+          if (!c.id || !c.id.endsWith('@s.whatsapp.net') || c.id.includes(':')) continue;
+          const phone = c.id.split('@')[0];
+          const name = c.name || c.notify || c.verifiedName || phone;
+          this.contactsCache.set(phone, name);
+        }
+      });
+
+      this.sock.ev.on('contacts.set', async (item) => {
+        const contacts = item.contacts || [];
+        for (const c of contacts) {
+          if (!c.id || !c.id.endsWith('@s.whatsapp.net') || c.id.includes(':')) continue;
+          const phone = c.id.split('@')[0];
+          const name = c.name || c.notify || c.verifiedName || phone;
+          this.contactsCache.set(phone, name);
+        }
+      });
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
