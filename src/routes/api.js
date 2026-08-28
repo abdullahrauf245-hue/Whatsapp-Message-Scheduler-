@@ -150,6 +150,16 @@ router.delete('/contacts/:id', async (req, res) => {
   }
 });
 
+router.post('/contacts/sync', async (req, res) => {
+  try {
+    await waClient.syncWhatsAppContacts();
+    const contacts = await dbQuery.all(`SELECT * FROM contacts ORDER BY name ASC`);
+    res.json({ success: true, count: contacts.length, data: contacts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // --- TEMPLATES CRUD ---
 router.get('/templates', async (req, res) => {
   try {

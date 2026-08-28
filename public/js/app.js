@@ -366,5 +366,26 @@ async function deleteTemplate(id) {
   }
 }
 
+// Sync WhatsApp Contacts Button Event
+const btnSync = document.getElementById('btn-sync-contacts');
+if (btnSync) {
+  btnSync.addEventListener('click', async () => {
+    btnSync.disabled = true;
+    btnSync.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> Syncing...`;
+    try {
+      const res = await fetch('/api/contacts/sync', { method: 'POST' }).then(r => r.json());
+      if (res.success) {
+        alert(`Contacts sync complete! (${res.data.length} contacts found)`);
+        refreshData();
+      }
+    } catch (e) {
+      alert('Error syncing contacts: ' + e.message);
+    } finally {
+      btnSync.disabled = false;
+      btnSync.innerHTML = `<i class="ri-refresh-line"></i> Sync WhatsApp Contacts`;
+    }
+  });
+}
+
 // Initial Data Load
 refreshData();

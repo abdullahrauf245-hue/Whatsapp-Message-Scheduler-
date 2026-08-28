@@ -87,6 +87,9 @@ class WhatsAppClient {
             };
           }
 
+          // Automatically sync contacts and recent chat recipients into local DB
+          this.syncWhatsAppContacts();
+
           this.broadcast('status_update', { 
             status: this.status, 
             user: this.userInfo 
@@ -94,10 +97,52 @@ class WhatsAppClient {
         }
       });
 
+      // Listen for contact sync events from Baileys
+      this.sock.ev.on('contacts.upsert', async (contacts) => {
+        const { dbQuery } = require('../db/database');
+        const { v4: uuidv4 } = require('uuid');
+        for (const c of contacts) {
+          if (!c.id || !c.id.endsWith('@s.whatsapp.net')) continue;
+          const phone = c.id.split('@')[0];
+          const name = c.name || c.notify || c.verifiedName || phone;
+          const existing = await dbQuery.get(`SELECT id FROM contacts WHERE phone = ?`, [phone]);
+          if (!existing) {
+            await dbQuery.run(
+              `INSERT INTO contacts (id, name, phone, tag, created_at) VALUES (?, ?, ?, ?, ?)`,
+              [uuidv4(), name, phone, 'WhatsApp Sync', new Date().toISOString()]
+            );
+          }
+        }
+      });
+
     } catch (error) {
       console.error('❌ WhatsApp Connection Error:', error);
       this.status = 'DISCONNECTED';
       this.broadcast('status_update', { status: this.status, error: error.message });
+    }
+  }
+
+  async syncWhatsAppContacts() {
+    try {
+      if (!this.sock) return;
+      const { dbQuery } = require('../db/database');
+      const { v4: uuidv4 } = require('uuid');
+      
+      const storeContacts = Object.values(this.sock.store?.contacts || {});
+      for (const c of storeContacts) {
+        if (!c.id || !c.id.endsWith('@s.whatsapp.net')) continue;
+        const phone = c.id.split('@')[0];
+        const name = c.name || c.notify || c.verifiedName || phone;
+        const existing = await dbQuery.get(`SELECT id FROM contacts WHERE phone = ?`, [phone]);
+        if (!existing) {
+          await dbQuery.run(
+            `INSERT INTO contacts (id, name, phone, tag, created_at) VALUES (?, ?, ?, ?, ?)`,
+            [uuidv4(), name, phone, 'WhatsApp Sync', new Date().toISOString()]
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Contact sync error:', err);
     }
   }
 
