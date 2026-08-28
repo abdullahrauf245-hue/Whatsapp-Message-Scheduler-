@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Message Scheduler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <i class="ri-whatsapp-fill"></i>
+          <span>WAP Scheduler</span>
+        </div>
+        <ul class="nav-links">
+          <li class="nav-link active" data-tab="dashboard">
+            <i class="ri-dashboard-line"></i> Dashboard
+          </li>
+          <li class="nav-link" data-tab="schedules">
+            <i class="ri-calendar-schedule-line"></i> Schedules
+          </li>
+          <li class="nav-link" data-tab="contacts">
+            <i class="ri-contacts-book-line"></i> Contacts
+          </li>
+          <li class="nav-link" data-tab="templates">
+            <i class="ri-file-list-3-line"></i> Templates
+          </li>
+          <li class="nav-link" data-tab="logs">
+            <i class="ri-history-line"></i> Logs & Activity
+          </li>
+        </ul>
+      </div>
+
+      <!-- WhatsApp Web Status Box -->
+      <div class="wa-status-box">
+        <div class="status-indicator">
+          <span class="dot" id="wa-dot"></span>
+          <span id="wa-status-text">Checking status...</span>
+        </div>
+        <p id="wa-user-info" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;"></p>
+        <button class="btn btn-secondary" id="btn-wa-action" style="width: 100%; font-size: 0.85rem;">
+          <i class="ri-qr-code-line"></i> Connect Device
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="page-header">
+        <div>
+          <h1 id="page-title">Dashboard Overview</h1>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Automate and manage your scheduled WhatsApp broadcasts.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-open-schedule-modal">
+          <i class="ri-add-line"></i> New Scheduled Message
+        </button>
+      </header>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="ri-time-line"></i></div>
+          <div class="stat-info">
+            <h3 id="stat-pending">0</h3>
+            <p>Pending Messages</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--primary);">
+            <i class="ri-check-double-line"></i>
+          </div>
+          <div class="stat-info">
+            <h3 id="stat-sent">0</h3>
+            <p>Sent Successfully</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--danger);">
+            <i class="ri-error-warning-line"></i>
+          </div>
+          <div class="stat-info">
+            <h3 id="stat-failed">0</h3>
+            <p>Failed / Errors</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: var(--accent);">
+            <i class="ri-user-line"></i>
+          </div>
+          <div class="stat-info">
+            <h3 id="stat-contacts">0</h3>
+            <p>Saved Contacts</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Views Container -->
+      <div id="tab-views">
+        
+        <!-- DASHBOARD TAB -->
+        <div class="tab-content active" id="view-dashboard">
+          <div class="card">
+            <div class="card-title">
+              <i class="ri-time-line"></i> Upcoming Scheduled Queue
+            </div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Recipient</th>
+                    <th>Message</th>
+                    <th>Scheduled For</th>
+                    <th>Repeat</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-upcoming-body">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCHEDULES TAB -->
+        <div class="tab-content" id="view-schedules" style="display: none;">
+          <div class="card">
+            <div class="card-title">
+              <i class="ri-calendar-schedule-line"></i> All Scheduled Messages
+            </div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Recipient</th>
+                    <th>Message Content</th>
+                    <th>Scheduled Time</th>
+                    <th>Recurring</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-all-schedules-body">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTACTS TAB -->
+        <div class="tab-content" id="view-contacts" style="display: none;">
+          <div class="card">
+            <div class="card-title" style="justify-content: space-between;">
+              <span><i class="ri-contacts-book-line"></i> Saved Contacts</span>
+              <button class="btn btn-secondary" id="btn-open-contact-modal"><i class="ri-add-line"></i> Add Contact</button>
+            </div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone Number</th>
+                    <th>Tag</th>
+                    <th>Added Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-contacts-body">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TEMPLATES TAB -->
+        <div class="tab-content" id="view-templates" style="display: none;">
+          <div class="card">
+            <div class="card-title" style="justify-content: space-between;">
+              <span><i class="ri-file-list-3-line"></i> Quick Templates</span>
+              <button class="btn btn-secondary" id="btn-open-template-modal"><i class="ri-add-line"></i> Create Template</button>
+            </div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Template Message</th>
+                    <th>Category</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-templates-body">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOGS TAB -->
+        <div class="tab-content" id="view-logs" style="display: none;">
+          <div class="card">
+            <div class="card-title">
+              <i class="ri-history-line"></i> System Logs & Broadcast Activity
+            </div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Log Message</th>
+                  </tr>
+                </thead>
+                <tbody id="table-logs-body">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- QR CODE MODAL -->
+  <div class="modal-overlay" id="modal-qr">
+    <div class="modal" style="text-align: center;">
+      <div class="modal-header">
+        <h3>Connect WhatsApp Web</h3>
+        <button class="modal-close" class="btn-close-modal">&times;</button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Open WhatsApp on your phone > Linked Devices > Link a Device, and scan this QR code.</p>
+      
+      <div class="qr-container">
+        <div id="qr-loading" style="color: #000;">Generating QR code...</div>
+        <img id="qr-image" src="" alt="WhatsApp QR Code" style="display: none;">
+      </div>
+
+      <div id="qr-status-msg" style="font-size: 0.85rem; color: var(--text-muted);">Waiting for scanner...</div>
+    </div>
+  </div>
+
+  <!-- CREATE SCHEDULE MODAL -->
+  <div class="modal-overlay" id="modal-schedule">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Schedule New Message</h3>
+        <button class="modal-close" class="btn-close-modal">&times;</button>
+      </div>
+      <form id="form-schedule">
+        <div class="form-group">
+          <label>Recipient Phone Number (with Country Code)</label>
+          <input type="text" class="form-control" id="sched-recipient" placeholder="e.g. +1234567890 or select from contacts" required>
+        </div>
+
+        <div class="form-group">
+          <label>Template (Optional Quick Fill)</label>
+          <select class="form-control" id="sched-template-select">
+            <option value="">-- Choose Template --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Message Text (Use {name} to substitute recipient's name)</label>
+          <textarea class="form-control" id="sched-message" placeholder="Type your message here..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Schedule Date & Time</label>
+          <input type="datetime-local" class="form-control" id="sched-datetime" required>
+        </div>
+
+        <div class="form-group">
+          <label>Repeat / Recurring Schedule</label>
+          <select class="form-control" id="sched-recurring">
+            <option value="none">One-time (No repeat)</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary btn-close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="ri-send-plane-fill"></i> Save Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CREATE CONTACT MODAL -->
+  <div class="modal-overlay" id="modal-contact">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Contact</h3>
+        <button class="modal-close" class="btn-close-modal">&times;</button>
+      </div>
+      <form id="form-contact">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" class="form-control" id="contact-name" placeholder="John Doe" required>
+        </div>
+
+        <div class="form-group">
+          <label>Phone Number (with Country Code)</label>
+          <input type="text" class="form-control" id="contact-phone" placeholder="1234567890" required>
+        </div>
+
+        <div class="form-group">
+          <label>Tag / Category</label>
+          <input type="text" class="form-control" id="contact-tag" placeholder="Client, Friend, Work, etc.">
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary btn-close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CREATE TEMPLATE MODAL -->
+  <div class="modal-overlay" id="modal-template">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add Message Template</h3>
+        <button class="modal-close" class="btn-close-modal">&times;</button>
+      </div>
+      <form id="form-template">
+        <div class="form-group">
+          <label>Template Title</label>
+          <input type="text" class="form-control" id="template-title" placeholder="Birthday Wish, Meeting Reminder..." required>
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" class="form-control" id="template-category" placeholder="General, Marketing, Sales...">
+        </div>
+
+        <div class="form-group">
+          <label>Template Content</label>
+          <textarea class="form-control" id="template-content" placeholder="Hi {name}, this is a reminder for..." required></textarea>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary btn-close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "name": "whatsapp-message-scheduler",
+  "version": "1.0.0",
+  "description": "Automated WhatsApp Message Scheduler with interactive Web Dashboard and WhatsApp Web / Baileys engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "scheduler",
+    "automation",
+    "baileys",
+    "whatsapp-web",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.12",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5",
+    "sqlite3": "^5.1.7",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
